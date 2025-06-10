@@ -1,5 +1,6 @@
+// src/routes/index.js
 const { Router } = require('express');
-const { db } = require('../firebase.js');
+const { db } = require('../firebase.js'); // Importa la instancia de Firestore
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
             ...doc.data()
         }));
 
-        res.render('index', { Producto });
+        res.render('index', { Producto }); // Renderiza la vista 'index.hbs'
     } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).send('Error fetching products');
@@ -30,7 +31,7 @@ router.post('/new-product', async (req, res) => {
             stock
         });
 
-        res.redirect('/');
+        res.redirect('/'); // Redirecciona a la página principal después de crear
     } catch (error) {
         console.error('Error creating product:', error);
         res.status(500).send('Error creating product');
@@ -48,24 +49,25 @@ router.get('/edit-product/:id', async (req, res) => {
 
         const producto = { id: doc.id, ...doc.data() };
 
+        // También obtén todos los productos para mostrar la lista junto al formulario de edición
         const querySnapshots = await db.collection('Producto').get();
         const Producto = querySnapshots.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
 
-        res.render('index', { Producto, producto });
+        res.render('index', { Producto, producto }); // Renderiza la vista 'index.hbs' con los datos para editar
     } catch (error) {
         console.error('Error fetching product:', error);
         res.status(500).send('Error fetching product');
     }
 });
 
-// Eliminar producto (usando GET)
+// Eliminar producto (usando GET, aunque POST/DELETE sería más RESTful para eliminaciones)
 router.get('/delete-product/:id', async (req, res) => {
     try {
         await db.collection('Producto').doc(req.params.id).delete();
-        res.redirect('/');
+        res.redirect('/'); // Redirecciona a la página principal después de eliminar
     } catch (error) {
         console.error('Error deleting product:', error);
         res.status(500).send('Error deleting product');
@@ -84,7 +86,7 @@ router.post('/update-product/:id', async (req, res) => {
             stock
         });
 
-        res.redirect('/');
+        res.redirect('/'); // Redirecciona a la página principal después de actualizar
     } catch (error) {
         console.error('Error updating product:', error);
         res.status(500).send('Error updating product');
