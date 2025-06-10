@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        /* Estilos CSS */
+        /* Estilos CSS principales */
         .card {
             border: none;
             border-radius: 12px;
@@ -44,9 +44,54 @@
         .table-striped tbody tr:nth-of-type(odd) {
             background-color: rgba(0, 0, 0, .05);
         }
+        .details-list {
+            list-style: none; /* Quita los bullets de la lista */
+            padding: 0;
+            margin: 0;
+        }
         .details-list li {
             font-size: 0.875rem;
             margin-bottom: 2px;
+        }
+
+        /* --- Estilos específicos para la impresión (media print) --- */
+        @media print {
+            /* Oculta explícitamente todo el body */
+            body {
+                visibility: hidden;
+            }
+            /* Luego, haz visible solo el área de impresión */
+            #print-area {
+                visibility: visible !important;
+                display: block !important; /* Asegura que se muestre como un bloque */
+                position: absolute; /* Posiciona el área de impresión de forma absoluta */
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px; /* Margen interior para el contenido impreso */
+                font-size: 12px; /* Tamaño de fuente ajustado para impresión */
+                color: #000; /* Asegura color de texto negro para impresión */
+                background-color: #fff; /* Fondo blanco para la página impresa */
+            }
+            #print-area h1 {
+                text-align: center;
+                margin-bottom: 20px;
+                color: #000;
+            }
+            #print-area table {
+                width: 100%;
+                border-collapse: collapse; /* Colapsa los bordes de la tabla */
+            }
+            #print-area th, #print-area td {
+                border: 1px solid #ddd; /* Bordes suaves para la tabla impresa */
+                padding: 8px;
+                text-align: left;
+            }
+            /* Regla crucial para la paginación: Salto de página después de cada 10 filas */
+            #print-area #print-sales-table-body tr.page-break-after {
+                page-break-after: always;
+            }
         }
     </style>
 </head>
@@ -77,16 +122,41 @@
                             </table>
                         </div>
                         <p id="no-sales-message" class="text-center text-muted mt-3" style="display: none;">No hay ventas registradas.</p>
+                        
+                        <!-- Botón para imprimir todas las ventas -->
+                        <button id="printSalesBtn" class="btn btn-custom w-100 mt-4">Imprimir Ventas (PDF)</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Área de contenido OCULTO en pantalla, pero VISIBLE para la impresión -->
+    <div id="print-area" style="display: none;">
+        <h1>Historial de Ventas</h1>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>ID Venta</th>
+                    <th>Fecha</th>
+                    <th>Productos</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="print-sales-table-body">
+                <!-- Las ventas se generarán aquí dinámicamente para la impresión -->
+            </tbody>
+        </table>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const salesTableBody = document.getElementById('sales-table-body');
         const noSalesMessage = document.getElementById('no-sales-message');
+        const printSalesBtn = document.getElementById('printSalesBtn');
+        const printSalesTableBody = document.getElementById('print-sales-table-body');
+
+        let allFetchedSales = []; // Almacena TODAS las ventas cargadas desde el backend
 
         async function fetchSales() {
             console.log('Frontend (Historial): Iniciando fetch de ventas...');
@@ -103,10 +173,10 @@
                     throw new Error(`Error al cargar las ventas: ${response.status} ${errorText}`);
                 }
 
-                const sales = await response.json();
-                console.log('Frontend (Historial): Datos de ventas recibidos:', sales);
+                allFetchedSales = await response.json();
+                console.log('Frontend (Historial): Datos de ventas recibidos:', allFetchedSales);
 
-                renderSalesTable(sales);
+                renderSalesTable(allFetchedSales); // Renderiza la tabla visible en pantalla
             } catch (error) {
                 console.error('Frontend (Historial): Error en fetchSales:', error);
                 salesTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar el historial de ventas. Revisa la consola para más detalles.</td></tr>';
@@ -114,7 +184,7 @@
         }
 
         function renderSalesTable(sales) {
-            console.log('Frontend (Historial): Intentando renderizar tabla con', sales.length, 'ventas.');
+            console.log('Frontend (Historial): Intentando renderizar tabla visible con', sales.length, 'ventas.');
             salesTableBody.innerHTML = '';
             if (!Array.isArray(sales) || sales.length === 0) {
                 noSalesMessage.style.display = 'block';
@@ -144,8 +214,61 @@
                 `;
                 salesTableBody.appendChild(row);
             });
-            console.log('Frontend (Historial): Tabla de ventas renderizada con éxito.');
+            console.log('Frontend (Historial): Tabla de ventas visible renderizada con éxito.');
         }
+
+        // --- Lógica de impresión (PDF) ---
+        printSalesBtn.addEventListener('click', () => {
+            console.log('Frontend (Imprimir): Botón de imprimir clickeado.');
+            if (allFetchedSales.length === 0) {
+                alert('No hay ventas para imprimir. Por favor, asegúrese de que el historial de ventas esté cargado.');
+                console.warn('Frontend (Imprimir): No hay ventas cargadas para imprimir.');
+                return;
+            }
+
+            console.log('Frontend (Imprimir): Preparando el área de impresión con', allFetchedSales.length, 'ventas.');
+            printSalesTableBody.innerHTML = ''; // Limpiar el área de impresión
+
+            allFetchedSales.forEach((sale, index) => {
+                const row = document.createElement('tr');
+                // El contenido HTML para la impresión debe ser consistente con la vista,
+                // pero asegúrate de que los estilos CSS no interfieran con él en el modo de impresión.
+                row.innerHTML = `
+                    <td>${sale.id ?? 'N/A'}</td>
+                    <td>${sale.fecha ?? 'Fecha no disponible'}</td>
+                    <td>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            ${(Array.isArray(sale.productos) && sale.productos.length > 0) ?
+                                sale.productos.map(p => `
+                                    <li>
+                                        ${p.nombre ?? 'Producto Desconocido'} (x${p.cantidad ?? 0}) - $${(typeof p.precioUnitario === 'number' && p.precioUnitario !== null) ? p.precioUnitario.toFixed(2) : '0.00'} c/u<br>
+                                        Tipo: ${p.tipoDeProducto ?? 'N/A'} | Venc: ${p.fechaDeVencimiento ?? 'N/A'}<br>
+                                        Cód: ${p.codigoDeBarras ?? 'N/A'} | Lab: ${p.marcaLaboratorio ?? 'N/A'}
+                                    </li>
+                                `).join('')
+                                : '<li>No hay detalles de productos para esta venta</li>'}
+                        </ul>
+                    </td>
+                    <td><strong>$${(typeof sale.total === 'number' && sale.total !== null) ? sale.total.toFixed(2) : '0.00'}</strong></td>
+                `;
+                
+                // Añadir una clase para el salto de página cada 10 filas
+                if ((index + 1) % 10 === 0 && (index + 1) < allFetchedSales.length) {
+                    row.classList.add('page-break-after');
+                }
+                printSalesTableBody.appendChild(row);
+            });
+
+            console.log('Frontend (Imprimir): Contenido de impresión preparado. Llamando a window.print()...');
+            window.print(); // Abre el diálogo de impresión del navegador
+
+            // Pequeño retraso para asegurar que el navegador tenga tiempo de procesar
+            // la impresión antes de limpiar el contenido.
+            setTimeout(() => {
+                console.log('Frontend (Imprimir): Limpiando el área de impresión después de 500ms.');
+                printSalesTableBody.innerHTML = '';
+            }, 500); 
+        });
 
         document.addEventListener('DOMContentLoaded', fetchSales);
     </script>
