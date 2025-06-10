@@ -1,0 +1,7 @@
+node_modules/
+.env
+# .gitignore
+firebase.json
+*.key
+*.pem
+*.json  # If you want to ignore all JSON files, but be cautious with this
