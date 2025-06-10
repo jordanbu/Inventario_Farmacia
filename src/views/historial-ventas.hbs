@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Ventas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Estilos CSS */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .btn-custom {
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+        }
+        .btn-custom:hover {
+            background: linear-gradient(90deg, #4338ca, #6d28d9);
+        }
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            padding: 10px;
+        }
+        .form-control:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+        .card-header {
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            padding: 20px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0, 0, 0, .05);
+        }
+        .details-list li {
+            font-size: 0.875rem;
+            margin-bottom: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="h4 mb-0">Historial de Ventas</h1>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID Venta</th>
+                                        <th>Fecha</th>
+                                        <th>Productos</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sales-table-body">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">Cargando ventas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="no-sales-message" class="text-center text-muted mt-3" style="display: none;">No hay ventas registradas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const salesTableBody = document.getElementById('sales-table-body');
+        const noSalesMessage = document.getElementById('no-sales-message');
+
+        async function fetchSales() {
+            console.log('Frontend (Historial): Iniciando fetch de ventas...');
+            salesTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Cargando ventas...</td></tr>';
+            noSalesMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/ventas');
+                console.log('Frontend (Historial): Respuesta de la API recibida. Status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Frontend (Historial): Error HTTP en la respuesta:', response.status, errorText);
+                    throw new Error(`Error al cargar las ventas: ${response.status} ${errorText}`);
+                }
+
+                const sales = await response.json();
+                console.log('Frontend (Historial): Datos de ventas recibidos:', sales);
+
+                renderSalesTable(sales);
+            } catch (error) {
+                console.error('Frontend (Historial): Error en fetchSales:', error);
+                salesTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar el historial de ventas. Revisa la consola para más detalles.</td></tr>';
+            }
+        }
+
+        function renderSalesTable(sales) {
+            console.log('Frontend (Historial): Intentando renderizar tabla con', sales.length, 'ventas.');
+            salesTableBody.innerHTML = '';
+            if (!Array.isArray(sales) || sales.length === 0) {
+                noSalesMessage.style.display = 'block';
+                return;
+            }
+            noSalesMessage.style.display = 'none';
+
+            sales.forEach(sale => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${sale.id ?? 'N/A'}</td>
+                    <td>${sale.fecha ?? 'Fecha no disponible'}</td>
+                    <td>
+                        <ul class="list-unstyled details-list">
+                            ${(Array.isArray(sale.productos) && sale.productos.length > 0) ?
+                                sale.productos.map(p => `
+                                    <li>
+                                        ${p.nombre ?? 'Producto Desconocido'} (x${p.cantidad ?? 0}) - $${(typeof p.precioUnitario === 'number' && p.precioUnitario !== null) ? p.precioUnitario.toFixed(2) : '0.00'} c/u<br>
+                                        Tipo: ${p.tipoDeProducto ?? 'N/A'} | Venc: ${p.fechaDeVencimiento ?? 'N/A'}<br>
+                                        Cód: ${p.codigoDeBarras ?? 'N/A'} | Lab: ${p.marcaLaboratorio ?? 'N/A'}
+                                    </li>
+                                `).join('')
+                                : '<li>No hay detalles de productos para esta venta</li>'}
+                        </ul>
+                    </td>
+                    <td><strong>$${(typeof sale.total === 'number' && sale.total !== null) ? sale.total.toFixed(2) : '0.00'}</strong></td>
+                `;
+                salesTableBody.appendChild(row);
+            });
+            console.log('Frontend (Historial): Tabla de ventas renderizada con éxito.');
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchSales);
+    </script>
+</body>
+</html>

@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Productos</title>
+    <title>Administración de Productos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
+        /* Estilos CSS personalizados para esta vista */
         .card {
             border: none;
             border-radius: 12px;
@@ -29,7 +30,21 @@
         .product-item {
             border-bottom: 1px solid #e5e7eb;
             padding: 15px 0;
+            display: flex;
+            flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
+            justify-content: space-between;
+            align-items: center;
         }
+        .product-details {
+            flex-grow: 1; /* Permite que los detalles ocupen el espacio disponible */
+            margin-right: 15px; /* Espacio entre detalles y botones */
+        }
+        .product-actions {
+            flex-shrink: 0; /* Evita que los botones se encojan */
+            display: flex;
+            gap: 8px; /* Espacio entre los botones */
+        }
+
         .form-control {
             border-radius: 8px;
             border: 1px solid #d1d5db;
@@ -50,6 +65,7 @@
 <body class="bg-gray-100">
     <div class="container py-5">
         <div class="row justify-content-center">
+            <!-- Sección de Lista de Productos Existentes -->
             <div class="col-md-8 col-lg-6 mb-4">
                 <div class="card">
                     <div class="card-header">
@@ -59,14 +75,15 @@
                         {{#if Producto}}
                         <ul class="list-unstyled">
                             {{#each Producto}}
-                            <li class="product-item d-flex justify-content-between align-items-center">
-                                <div>
+                            <li class="product-item">
+                                <div class="product-details">
                                     <h5 class="mb-1">{{nombre}}</h5>
-                                    <p class="mb-1 text-muted">Precio: ${{precio}}</p>
-                                    <p class="mb-0 text-muted">Stock: {{stock}}</p>
+                                    <p class="mb-1 text-muted">Precio: ${{precio}} | Stock: {{stock}}</p>
+                                    <p class="mb-1 text-muted">Tipo: {{tipoDeProducto}} | Vencimiento: {{fechaDeVencimiento}}</p>
+                                    <p class="mb-0 text-muted">Código: {{codigoDeBarras}} | Marca: {{marcaLaboratorio}}</p>
                                 </div>
-                                <div>
-                                    <a href="/edit-product/{{id}}" class="btn btn-warning btn-sm me-2">Editar</a>
+                                <div class="product-actions">
+                                    <a href="/edit-product/{{id}}" class="btn btn-warning btn-sm">Editar</a>
                                     <a href="/delete-product/{{id}}" class="btn btn-danger btn-sm">Eliminar</a>
                                 </div>
                             </li>
@@ -78,26 +95,55 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Sección de Agregar/Editar Producto -->
             <div class="col-md-8 col-lg-6">
                 <div class="card">
                     <div class="card-header">
-                        <h1 class="h4 mb-0">Agregar Producto</h1>
+                        <h1 class="h4 mb-0">{{#if producto.id}}Editar Producto{{else}}Agregar Producto{{/if}}</h1>
                     </div>
                     <div class="card-body p-4">
                         <form action="{{#if producto.id}}/update-product/{{producto.id}}{{else}}/new-product{{/if}}" method="post">
                             <div class="mb-3">
                                 <label for="nombre" class="form-label">Nombre del producto</label>
-                                <input type="text" name="nombre" class="form-control" id="nombre" placeholder="Nombre..." value="{{producto.nombre}}">
+                                <input type="text" name="nombre" class="form-control" id="nombre" placeholder="Nombre..." value="{{producto.nombre}}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="precio" class="form-label">Precio del producto</label>
-                                <input type="number" step="0.01" name="precio" class="form-control" id="precio" placeholder="Precio..." value="{{producto.precio}}">
+                                <input type="number" step="0.01" name="precio" class="form-control" id="precio" placeholder="Precio..." value="{{producto.precio}}" required min="0.01">
                             </div>
                             <div class="mb-3">
                                 <label for="stock" class="form-label">Stock del producto</label>
-                                <input type="number" name="stock" class="form-control" id="stock" placeholder="Stock..." value="{{producto.stock}}">
+                                <input type="number" name="stock" class="form-control" id="stock" placeholder="Stock..." value="{{producto.stock}}" required min="0">
                             </div>
-                            <button type="submit" class="btn btn-custom w-100">Agregar</button>
+                            <!-- Nuevos campos -->
+                            <div class="mb-3">
+                                <label for="tipoDeProducto" class="form-label">Tipo de Producto</label>
+                                <select name="tipoDeProducto" class="form-control" id="tipoDeProducto" required>
+                                    <option value="" disabled selected>Selecciona un tipo</option>
+                                    <option value="Jarabe" {{#ifeq producto.tipoDeProducto 'Jarabe'}}selected{{/ifeq}}>Jarabe</option>
+                                    <option value="Tableta" {{#ifeq producto.tipoDeProducto 'Tableta'}}selected{{/ifeq}}>Tableta</option>
+                                    <option value="Crema" {{#ifeq producto.tipoDeProducto 'Crema'}}selected{{/ifeq}}>Crema</option>
+                                    <option value="Inyectable" {{#ifeq producto.tipoDeProducto 'Inyectable'}}selected{{/ifeq}}>Inyectable</option>
+                                    <option value="Gotas" {{#ifeq producto.tipoDeProducto 'Gotas'}}selected{{/ifeq}}>Gotas</option>
+                                    <option value="Supositorio" {{#ifeq producto.tipoDeProducto 'Supositorio'}}selected{{/ifeq}}>Supositorio</option>
+                                    <option value="Otro" {{#ifeq producto.tipoDeProducto 'Otro'}}selected{{/ifeq}}>Otro</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="fechaDeVencimiento" class="form-label">Fecha de Vencimiento</label>
+                                <input type="date" name="fechaDeVencimiento" class="form-control" id="fechaDeVencimiento" value="{{producto.fechaDeVencimiento}}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="codigoDeBarras" class="form-label">Código de Barras</label>
+                                <input type="text" name="codigoDeBarras" class="form-control" id="codigoDeBarras" placeholder="Código de barras..." value="{{producto.codigoDeBarras}}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="marcaLaboratorio" class="form-label">Marca del Laboratorio</label>
+                                <input type="text" name="marcaLaboratorio" class="form-control" id="marcaLaboratorio" placeholder="Laboratorio..." value="{{producto.marcaLaboratorio}}" required>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-custom w-100">{{#if producto.id}}Actualizar{{else}}Agregar{{/if}}</button>
                         </form>
                     </div>
                 </div>
