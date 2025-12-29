@@ -1,0 +1,115 @@
+.sales-history-page {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.sales-table th,
+.sales-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sales-table thead {
+  background-color: #f9fafb;
+}
+
+.sales-table thead th {
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.sales-table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.sales-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.product-details-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.product-details-list li {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.product-details-list li:last-child {
+  margin-bottom: 0;
+}
+
+.product-details-list small {
+  color: var(--gray-600);
+}
+
+.total-amount {
+  font-size: 1.125rem;
+  color: var(--primary);
+}
+
+/* Estilos de impresión */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .sales-history-page,
+  .sales-history-page * {
+    visibility: visible;
+  }
+
+  .sales-history-page {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .btn {
+    display: none !important;
+  }
+
+  .navbar {
+    display: none !important;
+  }
+
+  .card {
+    box-shadow: none;
+  }
+
+  .sales-table th,
+  .sales-table td {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .product-details-list li {
+    page-break-inside: avoid;
+  }
+}
+
+@media (max-width: 768px) {
+  .sales-table {
+    font-size: 0.875rem;
+  }
+
+  .sales-table th,
+  .sales-table td {
+    padding: 0.75rem 0.5rem;
+  }
+}
