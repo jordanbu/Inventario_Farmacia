@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { productService } from '../services/api';
+import { API_BASE_URL } from '../config/api';
 import './ProductForm.css';
 
 function ProductForm({ editingProduct, onSuccess, onCancel }) {
@@ -12,7 +13,14 @@ function ProductForm({ editingProduct, onSuccess, onCancel }) {
     codigoDeBarras: '',
     marcaLaboratorio: ''
   });
+  const [categorias, setCategorias] = useState([]);
+  const [marcas, setMarcas] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCategorias();
+    fetchMarcas();
+  }, []);
 
   useEffect(() => {
     if (editingProduct) {
@@ -29,6 +37,30 @@ function ProductForm({ editingProduct, onSuccess, onCancel }) {
       resetForm();
     }
   }, [editingProduct]);
+
+  const fetchCategorias = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/categorias`);
+      if (response.ok) {
+        const data = await response.json();
+        setCategorias(data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchMarcas = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/marcas`);
+      if (response.ok) {
+        const data = await response.json();
+        setMarcas(data);
+      }
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -131,7 +163,7 @@ function ProductForm({ editingProduct, onSuccess, onCancel }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="tipoDeProducto" className="form-label">Tipo de Producto</label>
+            <label htmlFor="tipoDeProducto" className="form-label">Categoría de Producto</label>
             <select
               id="tipoDeProducto"
               name="tipoDeProducto"
@@ -140,14 +172,12 @@ function ProductForm({ editingProduct, onSuccess, onCancel }) {
               onChange={handleChange}
               required
             >
-              <option value="">Selecciona un tipo</option>
-              <option value="Jarabe">Jarabe</option>
-              <option value="Tableta">Tableta</option>
-              <option value="Crema">Crema</option>
-              <option value="Inyectable">Inyectable</option>
-              <option value="Gotas">Gotas</option>
-              <option value="Supositorio">Supositorio</option>
-              <option value="Otro">Otro</option>
+              <option value="">Selecciona una categoría</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.nombre}>
+                  {categoria.nombre}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -180,16 +210,21 @@ function ProductForm({ editingProduct, onSuccess, onCancel }) {
 
           <div className="form-group">
             <label htmlFor="marcaLaboratorio" className="form-label">Marca del Laboratorio</label>
-            <input
-              type="text"
+            <select
               id="marcaLaboratorio"
               name="marcaLaboratorio"
-              className="form-control"
+              className="form-select"
               value={formData.marcaLaboratorio}
               onChange={handleChange}
-              placeholder="Laboratorio..."
               required
-            />
+            >
+              <option value="">Selecciona una marca</option>
+              {marcas.map((marca) => (
+                <option key={marca.id} value={marca.nombre}>
+                  {marca.nombre}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button type="submit" className="btn btn-primary w-full" disabled={loading}>

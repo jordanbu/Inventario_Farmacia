@@ -1,0 +1,11 @@
+.assistant-page {
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .assistant-page {
+    padding: 0;
+  }
+}

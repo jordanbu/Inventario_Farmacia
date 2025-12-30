@@ -16,6 +16,14 @@ function Navbar() {
               to="/" 
               className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
             >
+              Dashboard
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/productos" 
+              className={`nav-link ${location.pathname === '/productos' ? 'active' : ''}`}
+            >
               Productos
             </Link>
           </li>
@@ -33,6 +41,30 @@ function Navbar() {
               className={`nav-link ${location.pathname === '/historial' ? 'active' : ''}`}
             >
               Historial
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/vencimientos" 
+              className={`nav-link ${location.pathname === '/vencimientos' ? 'active' : ''}`}
+            >
+              Vencimientos
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/asistente" 
+              className={`nav-link ${location.pathname === '/asistente' ? 'active' : ''}`}
+            >
+              🤖 Asistente
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/configuracion" 
+              className={`nav-link ${location.pathname === '/configuracion' ? 'active' : ''}`}
+            >
+              Configuración
             </Link>
           </li>
         </ul>

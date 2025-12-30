@@ -113,3 +113,8 @@ Inventario_Farmacia/
 ---
 
 **¿Necesitas ayuda?** Revisa el README.md principal para más detalles.
+
+PS C:\Users\burgo\Farmacia R> cd "C:\Users\burgo\Farmacia R\backend"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "node server.js"; Start-Sleep -Seconds 3; "Backend iniciado"
+Backend iniciado
+PS C:\Users\burgo\Farmacia R\backend>   correr el back end
+

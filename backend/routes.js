@@ -2,6 +2,7 @@
 const { Router } = require('express');
 const { db } = require('./firebase.js');
 const { Timestamp } = require('firebase-admin/firestore');
+const { searchProductRecommendations, getSymptomAdvice } = require('./gemini.js');
 
 const router = Router();
 
@@ -238,6 +239,142 @@ router.get('/api/ventas', async (req, res) => {
     } catch (error) {
         console.error('Backend /api/ventas GET: Error al obtener las ventas del historial:', error);
         res.status(500).json({ message: 'Error al obtener el historial de ventas.', error: error.message });
+    }
+});
+
+// ===================================
+// RUTAS PARA LA GESTIÓN DE CATEGORÍAS
+// ===================================
+
+// API para obtener todas las categorías
+router.get('/api/categorias', async (req, res) => {
+    try {
+        const querySnapshots = await db.collection('Categoria').get();
+        const categorias = querySnapshots.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        res.status(200).json(categorias);
+    } catch (error) {
+        console.error('Error fetching categories:', error);
+        res.status(500).json({ message: 'Error al obtener las categorías.', error: error.message });
+    }
+});
+
+// API para crear una nueva categoría
+router.post('/api/categorias', async (req, res) => {
+    try {
+        const { nombre, descripcion } = req.body;
+
+        if (!nombre) {
+            return res.status(400).json({ message: 'El nombre de la categoría es obligatorio.' });
+        }
+
+        const docRef = await db.collection('Categoria').add({
+            nombre: String(nombre),
+            descripcion: descripcion ? String(descripcion) : ''
+        });
+
+        res.status(201).json({ message: 'Categoría creada exitosamente', id: docRef.id });
+    } catch (error) {
+        console.error('Error creating category:', error);
+        res.status(500).json({ message: 'Error creating category', error: error.message });
+    }
+});
+
+// ===================================
+// RUTAS PARA LA GESTIÓN DE MARCAS
+// ===================================
+
+// API para obtener todas las marcas de laboratorio
+router.get('/api/marcas', async (req, res) => {
+    try {
+        const querySnapshots = await db.collection('Marca').get();
+        const marcas = querySnapshots.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        res.status(200).json(marcas);
+    } catch (error) {
+        console.error('Error fetching brands:', error);
+        res.status(500).json({ message: 'Error al obtener las marcas.', error: error.message });
+    }
+});
+
+// API para crear una nueva marca
+router.post('/api/marcas', async (req, res) => {
+    try {
+        const { nombre, descripcion } = req.body;
+
+        if (!nombre) {
+            return res.status(400).json({ message: 'El nombre de la marca es obligatorio.' });
+        }
+
+        const docRef = await db.collection('Marca').add({
+            nombre: String(nombre),
+            descripcion: descripcion ? String(descripcion) : ''
+        });
+
+        res.status(201).json({ message: 'Marca creada exitosamente', id: docRef.id });
+    } catch (error) {
+        console.error('Error creating brand:', error);
+        res.status(500).json({ message: 'Error creating brand', error: error.message });
+    }
+});
+
+// ===================================
+// RUTAS PARA EL ASISTENTE INTELIGENTE
+// ===================================
+
+// API para búsqueda inteligente de productos
+router.post('/api/asistente/buscar', async (req, res) => {
+    try {
+        const { query } = req.body;
+
+        if (!query) {
+            return res.status(400).json({ message: 'Se requiere una consulta de búsqueda.' });
+        }
+
+        // Obtener todos los productos
+        const querySnapshots = await db.collection('Producto').get();
+        const productos = querySnapshots.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        // Usar Gemini para generar recomendaciones
+        const resultado = await searchProductRecommendations(query, productos);
+
+        res.status(200).json(resultado);
+    } catch (error) {
+        console.error('Error en búsqueda inteligente:', error);
+        res.status(500).json({ message: 'Error al procesar la búsqueda', error: error.message });
+    }
+});
+
+// API para consejos basados en síntomas
+router.post('/api/asistente/sintomas', async (req, res) => {
+    try {
+        const { symptom } = req.body;
+
+        if (!symptom) {
+            return res.status(400).json({ message: 'Se requiere describir el síntoma.' });
+        }
+
+        // Obtener todos los productos
+        const querySnapshots = await db.collection('Producto').get();
+        const productos = querySnapshots.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        // Usar Gemini para generar consejos
+        const resultado = await getSymptomAdvice(symptom, productos);
+
+        res.status(200).json(resultado);
+    } catch (error) {
+        console.error('Error en consulta de síntomas:', error);
+        res.status(500).json({ message: 'Error al procesar la consulta', error: error.message });
     }
 });
 
