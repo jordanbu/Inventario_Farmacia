@@ -5,48 +5,75 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const GEMINI_API_KEY = 'AIzaSyCMMe8e30w5mweyC6fu2FZGVVFyuakU2gQ';
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
+// Función auxiliar para respuestas locales (fallback)
+function getLocalRecommendation(symptom, products) {
+    const lowerSymptom = symptom.toLowerCase();
+    let recommendations = [];
+    
+    // Buscar productos relevantes
+    if (lowerSymptom.includes('dolor') || lowerSymptom.includes('duele') || lowerSymptom.includes('cabeza')) {
+        const painRelief = products.filter(p => 
+            p.nombre.toLowerCase().includes('migral') || 
+            p.nombre.toLowerCase().includes('paracetamol') ||
+            p.nombre.toLowerCase().includes('ibuprofeno')
+        );
+        if (painRelief.length > 0) {
+            recommendations = painRelief.map(p => `• ${p.nombre} (${p.tipoDeProducto}) - Bs ${p.precio}, Stock: ${p.stock}`);
+        }
+    }
+    
+    if (lowerSymptom.includes('tos') || lowerSymptom.includes('gripe') || lowerSymptom.includes('resfriado')) {
+        const coughMeds = products.filter(p => 
+            p.tipoDeProducto.toLowerCase().includes('jarabe') ||
+            p.nombre.toLowerCase().includes('tos') ||
+            p.nombre.toLowerCase().includes('gripe')
+        );
+        if (coughMeds.length > 0) {
+            recommendations = coughMeds.map(p => `• ${p.nombre} (${p.tipoDeProducto}) - Bs ${p.precio}, Stock: ${p.stock}`);
+        }
+    }
+    
+    if (recommendations.length > 0) {
+        return `Para "${symptom}", te recomiendo:\n\n${recommendations.join('\n')}\n\nSi los síntomas persisten, consulta a un médico.`;
+    } else {
+        return `Actualmente no tenemos productos específicos para "${symptom}" en stock. Te recomiendo consultar a un farmacéutico o médico para una recomendación personalizada.`;
+    }
+}
+
 // Función para buscar productos por nombre o efecto
 async function searchProductRecommendations(query, allProducts) {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        // Búsqueda local en el inventario
+        const lowerQuery = query.toLowerCase();
+        const matchingProducts = allProducts.filter(p => 
+            p.nombre.toLowerCase().includes(lowerQuery) ||
+            p.tipoDeProducto.toLowerCase().includes(lowerQuery) ||
+            p.marcaLaboratorio.toLowerCase().includes(lowerQuery)
+        );
 
-        // Preparar información de productos disponibles
-        const productsInfo = allProducts.map(p => 
-            `- ${p.nombre} (${p.tipoDeProducto}) - Marca: ${p.marcaLaboratorio}, Stock: ${p.stock}`
-        ).join('\n');
-
-        const prompt = `Eres un asistente farmacéutico experto. Un cliente está buscando: "${query}"
-
-Productos disponibles en inventario:
-${productsInfo}
-
-Por favor:
-1. Identifica si algún producto del inventario coincide con la búsqueda
-2. Si no hay coincidencia exacta, sugiere productos alternativos con efectos similares
-3. Si no hay productos similares en inventario, recomienda qué tipo de medicamentos buscar y menciona que no están disponibles actualmente
-4. Proporciona información útil sobre el uso y efectos
-
-Formato de respuesta:
-- Sé breve y claro
-- Lista los productos encontrados o similares
-- Menciona advertencias importantes si aplican
-- Si no hay productos, explica qué alternativas existen`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        return {
-            success: true,
-            recommendation: text,
-            query: query
-        };
+        if (matchingProducts.length > 0) {
+            const productList = matchingProducts.map(p => 
+                `• ${p.nombre} - ${p.tipoDeProducto}\n  Marca: ${p.marcaLaboratorio}\n  Precio: Bs ${p.precio}\n  Stock: ${p.stock} unidades`
+            ).join('\n\n');
+            
+            return {
+                success: true,
+                recommendation: `Encontré estos productos:\n\n${productList}`,
+                query: query
+            };
+        } else {
+            return {
+                success: true,
+                recommendation: `No encontré "${query}" en el inventario.\n\nProductos disponibles:\n${allProducts.slice(0, 5).map(p => `• ${p.nombre} (${p.tipoDeProducto})`).join('\n')}`,
+                query: query
+            };
+        }
     } catch (error) {
-        console.error('Error en Gemini API:', error);
+        console.error('Error en búsqueda:', error);
         return {
             success: false,
-            error: 'Error al procesar la consulta',
-            recommendation: 'No se pudo generar una recomendación en este momento.'
+            error: 'Error al procesar la búsqueda',
+            recommendation: 'No se pudo realizar la búsqueda.'
         };
     }
 }
@@ -54,40 +81,67 @@ Formato de respuesta:
 // Función para obtener información sobre síntomas
 async function getSymptomAdvice(symptom, allProducts) {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        console.log('🔍 Consultando Gemini para síntoma:', symptom);
+        
+        // Intentar con Gemini primero
+        try {
+            const model = genAI.getGenerativeModel({ 
+                model: 'gemini-pro'
+            });
 
-        const productsInfo = allProducts.map(p => 
-            `- ${p.nombre} (${p.tipoDeProducto}) - Marca: ${p.marcaLaboratorio}`
-        ).join('\n');
+            const productsInfo = allProducts.map(p => 
+                `- ${p.nombre} (${p.tipoDeProducto}) - Marca: ${p.marcaLaboratorio}`
+            ).join('\n');
 
-        const prompt = `Eres un asistente farmacéutico. Un cliente describe el siguiente síntoma o condición: "${symptom}"
+            console.log('📦 Productos en inventario:', allProducts.length);
 
-Productos disponibles en la farmacia:
+            const prompt = `Eres un asistente farmacéutico. Un cliente pregunta: "${symptom}"
+
+INVENTARIO DISPONIBLE:
 ${productsInfo}
 
-Por favor:
-1. Sugiere qué productos del inventario podrían ayudar
-2. Si no hay productos adecuados, explica qué tipo de medicamento sería apropiado
-3. Proporciona consejos generales (recuerda que no reemplazas consulta médica)
-4. Menciona cuándo es importante consultar a un médico
+INSTRUCCIONES:
+1. Da una respuesta CORTA Y DIRECTA (máximo 4-5 líneas)
+2. Menciona SOLO productos que SÍ estén en el inventario
+3. Si no hay productos apropiados, recomienda qué buscar en otras farmacias
+4. Usa un tono amigable y profesional
+5. Si es caso serio, menciona consultar a un médico
 
-IMPORTANTE: Sé responsable con las recomendaciones médicas. Siempre sugiere consultar a un profesional para casos serios.`;
+IMPORTANTE: Respuesta breve, clara y útil.`;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+            console.log('📤 Enviando consulta a Gemini...');
+            const result = await model.generateContent(prompt);
+            console.log('📥 Respuesta recibida');
+            
+            const response = await result.response;
+            const text = response.text();
+            
+            console.log('✅ Texto generado de Gemini');
 
-        return {
-            success: true,
-            advice: text,
-            symptom: symptom
-        };
+            return {
+                success: true,
+                advice: text,
+                symptom: symptom
+            };
+        } catch (geminiError) {
+            console.log('⚠️ Gemini no disponible, usando recomendaciones locales');
+            console.log('Error Gemini:', geminiError.message);
+            
+            // Usar sistema de recomendaciones local
+            const localAdvice = getLocalRecommendation(symptom, allProducts);
+            return {
+                success: true,
+                advice: localAdvice,
+                symptom: symptom,
+                source: 'local'
+            };
+        }
     } catch (error) {
-        console.error('Error en Gemini API:', error);
+        console.error('❌ Error general:', error.message);
         return {
             success: false,
             error: 'Error al procesar la consulta',
-            advice: 'No se pudo generar un consejo en este momento.'
+            advice: `Error: ${error.message}`
         };
     }
 }

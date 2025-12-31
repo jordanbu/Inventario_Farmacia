@@ -23,6 +23,19 @@ function ChatAssistant() {
     scrollToBottom();
   }, [messages]);
 
+  const detectQueryType = (text) => {
+    const symptomKeywords = [
+      'dolor', 'duele', 'tengo', 'siento', 'me duele', 'fiebre', 'tos', 
+      'gripe', 'resfriado', 'malestar', 'mareo', 'náusea', 'vómito',
+      'diarrea', 'estreñimiento', 'alergia', 'picazón', 'inflamación',
+      'qué es bueno para', 'que es bueno para', 'necesito algo para',
+      'me siento', 'estoy', 'síntoma', 'sintoma'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    return symptomKeywords.some(keyword => lowerText.includes(keyword)) ? 'symptom' : 'product';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || loading) return;
@@ -34,17 +47,22 @@ function ChatAssistant() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentQuery = inputText;
     setInputText('');
     setLoading(true);
 
     try {
-      const endpoint = searchType === 'product' 
+      // Detectar automáticamente el tipo de consulta
+      const detectedType = detectQueryType(currentQuery);
+      const actualType = searchType === 'product' && detectedType === 'symptom' ? 'symptom' : searchType;
+      
+      const endpoint = actualType === 'product' 
         ? `${API_BASE_URL}/api/asistente/buscar`
         : `${API_BASE_URL}/api/asistente/sintomas`;
 
-      const body = searchType === 'product'
-        ? { query: inputText }
-        : { symptom: inputText };
+      const body = actualType === 'product'
+        ? { query: currentQuery }
+        : { symptom: currentQuery };
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -54,9 +72,16 @@ function ChatAssistant() {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) throw new Error('Error en la respuesta del servidor');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error en la respuesta del servidor');
+      }
 
       const data = await response.json();
+
+      if (!data.success && data.error) {
+        throw new Error(data.error);
+      }
 
       const botMessage = {
         type: 'bot',
@@ -69,7 +94,7 @@ function ChatAssistant() {
       console.error('Error:', error);
       const errorMessage = {
         type: 'bot',
-        text: 'Lo siento, hubo un error al procesar tu consulta. Por favor, intenta de nuevo.',
+        text: `Lo siento, hubo un error: ${error.message}. Por favor, intenta de nuevo.`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
